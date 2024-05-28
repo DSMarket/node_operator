@@ -1,6 +1,6 @@
 import { ethers, Contract } from "ethers";
 
-export default async function getNodeOperatorAddress(
+export default async function getOrders(
     providerURL,
     contract_address) {
   const provider = new ethers.JsonRpcProvider(providerURL);

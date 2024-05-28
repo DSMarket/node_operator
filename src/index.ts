@@ -3,7 +3,7 @@ import { createHelia } from 'helia';
 import { multiaddr } from '@multiformats/multiaddr';
 import { createLibp2p } from 'libp2p';
 import { Libp2pOptions } from './config/libp2p.js';
-import getNodeOperatorAddress from './getNodeAddrs.js'
+import getOrders from './getOrdersData.js'
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -26,7 +26,7 @@ async function main() {
 
     if(provider_url && contract_address){
         try {
-            const nodeAddress: string = await getNodeOperatorAddress(
+            const nodeAddress: string = await getOrders(
                 provider_url,
                 contract_address
             );

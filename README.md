@@ -11,6 +11,19 @@ Resposabilities:
 If he does not complies with his responsabilites from an agreement with a taker
 and a sentinel reports, he might get slashed in his collateral.
 
+## ToDo
+### Priority
+
+- [ ] Publish node CID Data Json
+- [ ] CLI
+- [ ] Add pinning methods when tracing taker CID and deadline
+- [ ] Add Maker, Taker and smart contract logic
+- [ ] Setup wallet .env
+- [ ] Provide collateral
+
+### Future
+- [ ] [Add Bootstrap for DSMarkets Nodes](https://github.com/libp2p/js-libp2p/tree/main/packages/peer-discovery-bootstrap)
+
 ## References
 
 - [connectig peers orbitdb Examples](https://github.com/orbitdb/orbitdb/blob/main/docs/CONNECTING_PEERS.md)
