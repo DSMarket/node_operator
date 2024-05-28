@@ -1,22 +1,16 @@
-import { ethers, Contract } from "ethers";
+import { createHelia } from 'helia';
+import { Libp2pOptions } from '../config/libp2p.js';
+import { createLibp2p } from 'libp2p';
+//import * as dotenv from 'dotenv';
+//dotenv.config();
 
-export default async function getOrders(
-    providerURL,
-    contract_address) {
-  const provider = new ethers.JsonRpcProvider(providerURL);
-  let abi = [
-      "function symbol() view returns (string)",
-      "function decimals() view returns (uint)",
-      "function _CCDBAddress() view returns (string)"
-  ];
-
-  // Create a contract
-  let contract = new Contract(contract_address, abi, provider);
-
+export default async function initHelia() {
+  // ToDo add logic to import privKey if exists
+  // if not generate new and store it.
   try {
-    let ccdbadd = await contract._CCDBAddress();
-
-    return ccdbadd;
+    const libp2p = await createLibp2p(Libp2pOptions);
+    const ipfs = await createHelia({ libp2p });
+    return ipfs;
   } catch (error) {
     console.error('Error fetching CCDBAddress:', error);
     return '';
