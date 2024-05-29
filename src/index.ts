@@ -2,7 +2,7 @@
 import { HeliaLibp2p } from 'helia';
 import { multiaddr, isMultiaddr, Multiaddr } from '@multiformats/multiaddr';
 import { Libp2p } from 'libp2p';
-//import { createPeerId } from '@libp2p/peer-id';
+import { peerIdFromString } from '@libp2p/peer-id';
 import { PeerId } from '@libp2p/interface';
 import initEthers from './modules/ethersModule.js';
 import initHelia from './modules/heliaModule.js';
@@ -16,8 +16,9 @@ import * as readline from "readline";
  [x] Add and test connecting websocket libp2p circuitRelayServer
  [x] restructure code
  [x] create CLI
- [x] dial a peer
- [x] hangUp a peer
+ [x] dial a multiaddr
+ [x] dial a peerID ( conversion issues)*ToAsk
+ [x] hangUp a peer (unknown if works)*ToAsk
  [ ] pin local multiaddrs
  [ ] pin a CID
  [ ] unpin a CID
@@ -26,7 +27,7 @@ import * as readline from "readline";
  [ ] status report (report taken Orders and pinned files with deadline)
  [ ] take an order and pin (methods and time check)
  [x] Ethers-js import wallet from .env [ ] Test with contracts
- [ ] make peerID static or import (not priority)
+ [ ] make peerID static or import (not priority) *ToAsk
  [ ] setup dns resolver (not priority)
 */
 
@@ -85,8 +86,9 @@ Options: \n \
 [3]: Get Eth linked Data\n \
 [4]: Get Storage Orders\n \
 [5]: Get Dialed IPFS Peers\n \
-[6]: Dial a Peer\n \
-[7]: Hang Up a Peer\n \
+[6]: Dial a Multiaddrs\n \
+[7]: Dial a PeerID\n \
+[8]: Hang Up a Peer\n \
 Option:",
     async (answer: string) => {
       console.log(`Selected: ${answer}\n`);
@@ -116,12 +118,18 @@ Option:",
           mainMenu(rl);
           break;
         case 6:
-            rl.question("please input the peer multiaddrs:", async (addrs) => {
-            await DialAPeer(ipfs, addrs);
+          rl.question("please input the peer multiaddrs:", async (addrs) => {
+            await DialAMultiaddr(ipfs, addrs);
             mainMenu(rl);
           });
           break;
         case 7:
+          rl.question("please input the peerID:", async (addrs) => {
+            await DialAPeerID(ipfs, addrs);
+            mainMenu(rl);
+          });
+          break;
+        case 8:
             await printNumerableDialedPeers(ipfs);
             rl.question("please input a number to hangHup:", async (addrs) => {
             await hangUpAPeer(addrs);
@@ -162,7 +170,21 @@ async function printDialedPeers(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unk
 }
 
 
-async function DialAPeer(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>,
+async function DialAPeerID(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>,
+                          peer: string) { 
+    // Check tipes and merge reduce code duplication with dialMulltiaddr
+    // ToDo: Use isName to check dns strings
+    try{
+        console.log("going to dial:{peer}"); 
+        const dialPeerID = peerIdFromString(peer);
+        await ipfs.libp2p.dial(dialPeerID);
+        console.log("dialed:", dialPeerID); 
+    } catch(error) {
+       console.log("Error: ", error); 
+    }
+}
+
+async function DialAMultiaddr(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>,
                           addrs: string) { 
     // ToDo: Use isName to check dns strings
     const peerMultiAddr = multiaddr(addrs);
