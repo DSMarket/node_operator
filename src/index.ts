@@ -165,11 +165,11 @@ async function printDialedPeers(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unk
 async function DialAPeer(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>,
                           addrs: string) { 
     // ToDo: Use isName to check dns strings
+    const peerMultiAddr = multiaddr(addrs);
     try  {
-        if(isMultiaddr(addrs)){
-            let peerMultiAddr: Multiaddr;
-            peerMultiAddr = multiaddr(addrs);
+        if(isMultiaddr(peerMultiAddr)){
             await ipfs.libp2p.dial(peerMultiAddr);
+            console.log("dialed:", peerMultiAddr); 
         }
     } catch(error) {
        console.log("Error: ", error); 
