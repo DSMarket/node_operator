@@ -1,8 +1,9 @@
 /* eslint-disable no-console */
 import { HeliaLibp2p } from 'helia';
-import { multiaddr } from '@multiformats/multiaddr';
+import { multiaddr, isMultiaddr, Multiaddr } from '@multiformats/multiaddr';
 import { Libp2p } from 'libp2p';
-//import { PeerID } from '@libp2p/peer-id';
+//import { createPeerId } from '@libp2p/peer-id';
+import { PeerId } from '@libp2p/interface';
 import initEthers from './modules/ethersModule.js';
 import initHelia from './modules/heliaModule.js';
 import { JsonRpcProvider, Wallet, Contract } from "ethers";
@@ -16,16 +17,20 @@ import * as readline from "readline";
  [x] restructure code
  [x] create CLI
  [x] dial a peer
- [ ] hangUp a peer
+ [x] hangUp a peer
+ [ ] pin local multiaddrs
+ [ ] pin a CID
+ [ ] unpin a CID
+ [ ] update local multiaddrs(add public IP and others)
+ [ ] unpin local multiaddrs
+ [ ] status report (report taken Orders and pinned files with deadline)
  [ ] take an order and pin (methods and time check)
- [x] Ethers-js import wallet from .env
- [ ] Test with contracts
+ [x] Ethers-js import wallet from .env [ ] Test with contracts
  [ ] make peerID static or import (not priority)
  [ ] setup dns resolver (not priority)
 */
 
-interface EthersStruct {
-    provider: JsonRpcProvider;
+interface EthersStruct { provider: JsonRpcProvider;
     wallet: Wallet;
     contract: Contract;
     abi: any[];
@@ -33,8 +38,8 @@ interface EthersStruct {
 
 let eth: EthersStruct;
 let ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>;
+let dialedPeers: PeerId [];
 //ToDO SOlve
-//let dialedPeers: PeerID [];
 
 async function main() {
 
@@ -59,41 +64,6 @@ async function main() {
     });
     mainMenu(rl);
 
-    // TODO dial dns peerIDs
-    //let node0 = "/dns4/ipfs.decentralizedscience.org/tcp/4004/ws/p2p/12D3KooWQzickgUJ1N9dNZMJpNnFUCHmhndTVgexXnt6dQhPFcEE";
-    //let node0 = "/dnsaddr/ipfs.decentralizedscience.org/tcp/4004/ws/p2p/12D3KooWQzickgUJ1N9dNZMJpNnFUCHmhndTVgexXnt6dQhPFcEE";
-    //let node0 = "/dns4/ipfs.decentralizedscience.org/tcp/443/ws/p2p/12D3KooWQzickgUJ1N9dNZMJpNnFUCHmhndTVgexXnt6dQhPFcEE";
-    //let node0 = "/dnsaddr/ipfs.decentralizedscience.org/tcp/443/wss/p2p/12D3KooWQzickgUJ1N9dNZMJpNnFUCHmhndTVgexXnt6dQhPFcEE";
-    //let node0 = "/dnsaddr/ipfs.decentralizedscience.org/p2p/12D3KooWQzickgUJ1N9dNZMJpNnFUCHmhndTVgexXnt6dQhPFcEE"
-    
-    //let node0 = "/dns4/ipfs.decentralizedscience.org/tcp/443/wss/p2p/";
-    
-    // local test working
-    //let node1 = multiaddr("/ip4/10.224.190.150/tcp/4001"); 
-    //let node2 = multiaddr("/ip4/10.224.190.9/tcp/4001"); 
-    //let peers = ipfs.libp2p.getPeers()
-
-    // dialer client nodes
-    //while(peers.length < 1) {
-    //  peers = ipfs.libp2p.getPeers()
-    //  try {
-    //    await ipfs.libp2p.dial(node1);
-    //    await ipfs.libp2p.dial(node2);
-    //  } catch (error) {
-	//  console.log(error);
-    //  }
-    //  await new Promise(resolve => setTimeout(resolve, 3000));
-    //}
-    //console.log(peers)
-    
-    // Node Daemon Running and printing solved peers
-    //while(true) {
-    //  peers = ipfs.libp2p.getPeers()
-    //  await new Promise(resolve => setTimeout(resolve, 3000));
-    //  console.log(peers)
-    //}
-
-
     //const peer = await ipfs.libp2p.peerStore.get(ipfs.libp2p.dial)
     //const peer = await ipfs.libp2p.peerStore.get(ipfs.libp2p.dial)
     //await ipfs.libp2p.dial(node0);
@@ -107,22 +77,17 @@ async function mainMenu(rl: readline.Interface) {
 }
 
 function menuOptions(rl: readline.Interface) {
-  rl.question(
-    "Select operation: \n \
-    Options: \n \
-    [0]: Exit \n \
-    [1]: PrintMenu \n \
-    [2]: Get Local Node Info \n \
-    [3]: Get Eth linked Data\n \
-    [4]: Get Storage Orders\n \
-    [5]: Get Dialed IPFS Peers\n \
-    Option:",
-    // Just in case: IPFS integration of Option 3 - upload songs, put their hashes and premit to some addeses this songs
-    // VoteNextSong: set a blocktimestap when it finishes and count votes, select the winner
-    // Diplay Song: Request all the SongID (NFT TokenID) and display with their data
-    // Vote Song: requires the blocktimestamp to be active, requires to record addreses that vote in a mapping with votes and specific songID
-    // Add Winner Song: Queue Winnersongs with timestamps
-    // Play Winner Song: Anyone can play Winner Song when its timestamp reaches the time
+  rl.question("Select operation: \n \
+Options: \n \
+[0]: Exit \n \
+[1]: PrintMenu \n \
+[2]: Get Local Node Info \n \
+[3]: Get Eth linked Data\n \
+[4]: Get Storage Orders\n \
+[5]: Get Dialed IPFS Peers\n \
+[6]: Dial a Peer\n \
+[7]: Hang Up a Peer\n \
+Option:",
     async (answer: string) => {
       console.log(`Selected: ${answer}\n`);
       const option = Number(answer);
@@ -150,14 +115,25 @@ function menuOptions(rl: readline.Interface) {
           await printDialedPeers(ipfs);
           mainMenu(rl);
           break;
+        case 6:
+            rl.question("please input the peer multiaddrs:", async (addrs) => {
+            await DialAPeer(ipfs, addrs);
+            mainMenu(rl);
+          });
+          break;
+        case 7:
+            await printNumerableDialedPeers(ipfs);
+            rl.question("please input a number to hangHup:", async (addrs) => {
+            await hangUpAPeer(addrs);
+            mainMenu(rl);
+          });
+          break;
         default:
           throw new Error("Invalid option");
       }
     }
   );
 }
-
-
 
 async function getStorageOrders(eth: EthersStruct){
   // Add logic 
@@ -180,22 +156,49 @@ async function printEthStruct(eth: EthersStruct) {
 }
 
 async function printDialedPeers(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>) {
-    const dialedPeers = ipfs.libp2p.getPeers();
-    console.log("The following peers are dialing:")
-    console.log(dialedPeers)
+    dialedPeers = ipfs.libp2p.getPeers();
+    console.log("The following peers are dialing:");
+    console.log(dialedPeers);
 }
 
-//async function DialAPeer(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>,
-//                          peerID: String) {
-//}
-//async function hangUpAPeer(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>,
-//                          peerID: String) {
-//}
-//
-//async function unlinkAPeer(){
-//  await ipfs.libp2p.hangUp(node1_ma)
-//}
-//
+
+async function DialAPeer(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>,
+                          addrs: string) { 
+    // ToDo: Use isName to check dns strings
+    try  {
+        if(isMultiaddr(addrs)){
+            let peerMultiAddr: Multiaddr;
+            peerMultiAddr = multiaddr(addrs);
+            await ipfs.libp2p.dial(peerMultiAddr);
+        }
+    } catch(error) {
+       console.log("Error: ", error); 
+    }
+}
+
+async function printNumerableDialedPeers(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>) {
+    dialedPeers = ipfs.libp2p.getPeers();
+    for(let [index, element] of dialedPeers.entries()){
+        console.log(`${index} is peerID: ${element.toString()}`);
+    }
+}
+
+// This is mostly for sentinels since they are not public nodes
+// Usually if there is a dicovery like mDNS and/or
+// the peer is dialing it will reconect
+async function hangUpAPeer(number: string) {
+    let hangUpPeerId = dialedPeers[number];
+    //let hangUpPeerId = dialedPeers[number].toString();
+    try {
+        await ipfs.libp2p.hangUp(hangUpPeerId);
+        console.log(`peerID: ${hangUpPeerId.toString()},\n hanged Up`);
+        //await ipfs.libp2p.hangUp(multiaddr(`/ipfs/${hangUpPeerId}`));
+        //console.log(`peerID: ${hangUpPeerId},\n hanged Up`);
+    } catch(error){
+       console.log("Error: ", error); 
+    }
+}
+
 async function closeHelia(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>) {
   console.log("Closing session...")
   await ipfs.stop()
