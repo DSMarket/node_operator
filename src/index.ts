@@ -1,6 +1,8 @@
 /* eslint-disable no-console */
 import { HeliaLibp2p } from 'helia';
+import { UnixFS } from '@helia/unixfs';
 import { multiaddr, isMultiaddr, Multiaddr } from '@multiformats/multiaddr';
+import { CID } from 'multiformats/cid'
 import { Libp2p } from 'libp2p';
 import { peerIdFromString } from '@libp2p/peer-id';
 import { PeerId } from '@libp2p/interface';
@@ -19,9 +21,10 @@ import * as readline from "readline";
  [x] dial a multiaddr
  [x] dial a peerID ( conversion issues)*ToAsk
  [x] hangUp a peer (unknown if works)*ToAsk
- [ ] pin local multiaddrs
+ [ ] pin Data (add Data)
  [ ] pin a CID
  [ ] unpin a CID
+ [ ] pin local multiaddrs
  [ ] update local multiaddrs(add public IP and others)
  [ ] unpin local multiaddrs
  [ ] status report (report taken Orders and pinned files with deadline)
@@ -31,16 +34,29 @@ import * as readline from "readline";
  [ ] setup dns resolver (not priority)
 */
 
-interface EthersStruct { provider: JsonRpcProvider;
+interface EthersStruct {
+    provider: JsonRpcProvider;
     wallet: Wallet;
     contract: Contract;
     abi: any[];
 }
 
+interface ipfsStruct {
+    node: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>;
+    fs: UnixFS;
+}
+
+//interface storageOrder {
+//    orderID: string;
+//    makerAddrs: string;
+//    data: string;
+//    TTL: string;
+//}
+
 let eth: EthersStruct;
-let ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>;
+let ipfs: ipfsStruct;
 let dialedPeers: PeerId [];
-//ToDO SOlve
+let storageOrders: CID[] = [];
 
 async function main() {
 
@@ -89,6 +105,9 @@ Options: \n \
 [6]: Dial a Multiaddrs\n \
 [7]: Dial a PeerID\n \
 [8]: Hang Up a Peer\n \
+[9]: Print Active Orders\n \
+[10]: Publish Data\n \
+[11]: Get Data\n \
 Option:",
     async (answer: string) => {
       console.log(`Selected: ${answer}\n`);
@@ -132,7 +151,24 @@ Option:",
         case 8:
             await printNumerableDialedPeers(ipfs);
             rl.question("please input a number to hangHup:", async (addrs) => {
-            await hangUpAPeer(addrs);
+            await hangUpAPeer(ipfs, addrs);
+            mainMenu(rl);
+          });
+          break;
+        case 9:
+          await printNumerableOrders();
+          mainMenu(rl);
+          break; 
+        case 10:
+            rl.question("please input Data:", async (data) => {
+            await pushData(ipfs, data);
+            mainMenu(rl);
+          });
+          break;
+        case 11:
+            await printNumerableOrders();
+            rl.question("please input a number of Order:", async (order) => {
+            await getData(ipfs, order);
             mainMenu(rl);
           });
           break;
@@ -149,11 +185,11 @@ async function getStorageOrders(eth: EthersStruct){
   console.log('Greeting from contract:', nodeAddress);
 }
 
-async function printLocalPeerData(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>) {
+async function printLocalPeerData(ipfs: ipfsStruct) {
   console.info('Helia is running');
-  console.info('PeerId:', ipfs.libp2p.peerId.toString());
+  console.info('PeerId:', ipfs.node.libp2p.peerId.toString());
   console.info('MultiAddress of this Node:');
-  const addr = ipfs.libp2p.getMultiaddrs();
+  const addr = ipfs.node.libp2p.getMultiaddrs();
   console.log(addr);
 }
 async function printEthStruct(eth: EthersStruct) {
@@ -163,34 +199,32 @@ async function printEthStruct(eth: EthersStruct) {
     console.log('ABI:', eth.abi);
 }
 
-async function printDialedPeers(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>) {
-    dialedPeers = ipfs.libp2p.getPeers();
+async function printDialedPeers(ipfs: ipfsStruct) {
+    dialedPeers = ipfs.node.libp2p.getPeers();
     console.log("The following peers are dialing:");
     console.log(dialedPeers);
 }
 
 
-async function DialAPeerID(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>,
-                          peer: string) { 
+async function DialAPeerID(ipfs: ipfsStruct, peer: string) { 
     // Check tipes and merge reduce code duplication with dialMulltiaddr
     // ToDo: Use isName to check dns strings
     try{
         console.log("going to dial:{peer}"); 
         const dialPeerID = peerIdFromString(peer);
-        await ipfs.libp2p.dial(dialPeerID);
+        await ipfs.node.libp2p.dial(dialPeerID);
         console.log("dialed:", dialPeerID); 
     } catch(error) {
        console.log("Error: ", error); 
     }
 }
 
-async function DialAMultiaddr(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>,
-                          addrs: string) { 
+async function DialAMultiaddr(ipfs: ipfsStruct, addrs: string) { 
     // ToDo: Use isName to check dns strings
     const peerMultiAddr = multiaddr(addrs);
     try  {
         if(isMultiaddr(peerMultiAddr)){
-            await ipfs.libp2p.dial(peerMultiAddr);
+            await ipfs.node.libp2p.dial(peerMultiAddr);
             console.log("dialed:", peerMultiAddr); 
         }
     } catch(error) {
@@ -198,8 +232,8 @@ async function DialAMultiaddr(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unkno
     }
 }
 
-async function printNumerableDialedPeers(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>) {
-    dialedPeers = ipfs.libp2p.getPeers();
+async function printNumerableDialedPeers(ipfs: ipfsStruct) {
+    dialedPeers = ipfs.node.libp2p.getPeers();
     for(let [index, element] of dialedPeers.entries()){
         console.log(`${index} is peerID: ${element.toString()}`);
     }
@@ -208,22 +242,99 @@ async function printNumerableDialedPeers(ipfs: HeliaLibp2p<Libp2p<{ x: Record<st
 // This is mostly for sentinels since they are not public nodes
 // Usually if there is a dicovery like mDNS and/or
 // the peer is dialing it will reconect
-async function hangUpAPeer(number: string) {
+// ToDO check how to block peers
+async function hangUpAPeer(ipfs: ipfsStruct, number: string) {
     let hangUpPeerId = dialedPeers[number];
     //let hangUpPeerId = dialedPeers[number].toString();
     try {
-        await ipfs.libp2p.hangUp(hangUpPeerId);
+        await ipfs.node.libp2p.hangUp(hangUpPeerId);
         console.log(`peerID: ${hangUpPeerId.toString()},\n hanged Up`);
-        //await ipfs.libp2p.hangUp(multiaddr(`/ipfs/${hangUpPeerId}`));
+        //await ipfs.node.libp2p.hangUp(multiaddr(`/ipfs.node/${hangUpPeerId}`));
         //console.log(`peerID: ${hangUpPeerId},\n hanged Up`);
     } catch(error){
        console.log("Error: ", error); 
     }
 }
 
-async function closeHelia(ipfs: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>) {
+async function printNumerableOrders() {
+    for(let [index, element] of storageOrders.entries()){
+        console.log(`${index} order has CID: ${element.toString()}`);
+    }
+ //   try{
+ //       if(storageOrders.length > 0){
+ //           for(let [index, element] of storageOrders.entries()){
+ //               console.log(`${index} is peerID: ${element.toString()}`);
+ //           }
+ //       } else {
+ //        console.log("No Orders Stored"); 
+ //       }
+ //   } catch(error) {
+ //      console.log("Error: ", error); 
+ //   }
+}
+
+// This puts data into the Helia Node
+async function pushData(ipfs: ipfsStruct, data: string ) {
+    const encoder = new TextEncoder();
+    const cid = await ipfs.fs.addBytes(encoder.encode(data), {
+        onProgress: (evt) => {
+            console.info('add event', evt.type, evt.detail)
+        }
+    })
+    storageOrders.push(cid); 
+    console.log('Added file:', cid.toString()) 
+}
+
+// This gets data from the Helia Node and decodes it
+async function getData(ipfs: ipfsStruct, order: string) {
+    // this decoder will turn Uint8Arrays into strings
+    const decoder = new TextDecoder()
+    const selectedOrder = storageOrders[order];
+    let text = ''
+
+    for await (const chunk of ipfs.fs.cat(selectedOrder, {
+        onProgress: (evt) => {
+            console.info('cat event', evt.type, evt.detail)
+        }
+    })) {
+        text += decoder.decode(chunk, {
+            stream: true
+        })
+    }
+
+    console.log(`Data from: ${selectedOrder.toString()}`);
+    console.log(text)
+    //return text
+}
+
+//ToDo
+//async function pinCID(ipfs: ipfsStruct, cidString: string ) {
+//    const encoder = new TextEncoder();
+//    const cid = await ipfs.fs.addBytes(encoder.encode('Hello World 101'), {
+//        onProgress: (evt) => 
+//            console.info('add event', evt.type, evt.detail)
+//        }
+//    })
+//    const cidStr = cid.toString();
+//    storageOrders.push(cidStr); 
+//    console.log('Added file:', cidStr) 
+//}
+////ToDo
+//async function upinCID(ipfs: ipfsStruct, cidString: string ) {
+//    const encoder = new TextEncoder();
+//    const cid = await ipfs.fs.addBytes(encoder.encode('Hello World 101'), {
+//        onProgress: (evt) => {
+//            console.info('add event', evt.type, evt.detail)
+//        }
+//    })
+//    const cidStr = cid.toString();
+//    storageOrders.push(cidStr); 
+//    console.log('Added file:', cidStr) 
+//}
+
+async function closeHelia(ipfs: ipfsStruct) {
   console.log("Closing session...")
-  await ipfs.stop()
+  await ipfs.node.stop()
   console.log("Good bye ;)")
 }
 
