@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import { HeliaLibp2p } from 'helia';
+//import { pin, unpin } from 'helia/pin';
 import { UnixFS } from '@helia/unixfs';
 import { multiaddr, isMultiaddr, Multiaddr } from '@multiformats/multiaddr';
 import { CID } from 'multiformats/cid'
@@ -21,14 +22,15 @@ import * as readline from "readline";
  [x] dial a multiaddr
  [x] dial a peerID ( conversion issues)*ToAsk
  [x] hangUp a peer (unknown if works)*ToAsk
- [ ] pin Data (add Data)
+ [x] add Data method
+ [x] get Data method
+ [ ] take an order and pin (methods and time check)
  [ ] pin a CID
  [ ] unpin a CID
  [ ] pin local multiaddrs
  [ ] update local multiaddrs(add public IP and others)
  [ ] unpin local multiaddrs
  [ ] status report (report taken Orders and pinned files with deadline)
- [ ] take an order and pin (methods and time check)
  [x] Ethers-js import wallet from .env [ ] Test with contracts
  [ ] make peerID static or import (not priority) *ToAsk
  [ ] setup dns resolver (not priority)
@@ -108,6 +110,8 @@ Options: \n \
 [9]: Print Active Orders\n \
 [10]: Publish Data\n \
 [11]: Get Data\n \
+[12]: Pin CID\n \
+[13]: Unpin CID\n \
 Option:",
     async (answer: string) => {
       console.log(`Selected: ${answer}\n`);
@@ -169,6 +173,19 @@ Option:",
             await printNumerableOrders();
             rl.question("please input a number of Order:", async (order) => {
             await getData(ipfs, order);
+            mainMenu(rl);
+          });
+          break;
+        case 12:
+            rl.question("please input CID to pin:", async (cidString) => {
+            await pinCID(ipfs, cidString);
+            mainMenu(rl);
+          });
+          break;
+        case 13:
+            await printNumerableOrders();
+            rl.question("please input a number to upin:", async (index) => {
+            await unPinCID(ipfs, index);
             mainMenu(rl);
           });
           break;
@@ -243,9 +260,9 @@ async function printNumerableDialedPeers(ipfs: ipfsStruct) {
 // Usually if there is a dicovery like mDNS and/or
 // the peer is dialing it will reconect
 // ToDO check how to block peers
-async function hangUpAPeer(ipfs: ipfsStruct, number: string) {
-    let hangUpPeerId = dialedPeers[number];
-    //let hangUpPeerId = dialedPeers[number].toString();
+async function hangUpAPeer(ipfs: ipfsStruct, index: string) {
+    let hangUpPeerId = dialedPeers[index];
+    //let hangUpPeerId = dialedPeers[index].toString();
     try {
         await ipfs.node.libp2p.hangUp(hangUpPeerId);
         console.log(`peerID: ${hangUpPeerId.toString()},\n hanged Up`);
@@ -257,6 +274,7 @@ async function hangUpAPeer(ipfs: ipfsStruct, number: string) {
 }
 
 async function printNumerableOrders() {
+    // TODO: Add pinned status ans structs
     for(let [index, element] of storageOrders.entries()){
         console.log(`${index} order has CID: ${element.toString()}`);
     }
@@ -286,10 +304,10 @@ async function pushData(ipfs: ipfsStruct, data: string ) {
 }
 
 // This gets data from the Helia Node and decodes it
-async function getData(ipfs: ipfsStruct, order: string) {
+async function getData(ipfs: ipfsStruct, orderIdx: string) {
     // this decoder will turn Uint8Arrays into strings
     const decoder = new TextDecoder()
-    const selectedOrder = storageOrders[order];
+    const selectedOrder = storageOrders[orderIdx];
     let text = ''
 
     for await (const chunk of ipfs.fs.cat(selectedOrder, {
@@ -307,30 +325,31 @@ async function getData(ipfs: ipfsStruct, order: string) {
     //return text
 }
 
-//ToDo
-//async function pinCID(ipfs: ipfsStruct, cidString: string ) {
-//    const encoder = new TextEncoder();
-//    const cid = await ipfs.fs.addBytes(encoder.encode('Hello World 101'), {
-//        onProgress: (evt) => 
-//            console.info('add event', evt.type, evt.detail)
-//        }
-//    })
-//    const cidStr = cid.toString();
-//    storageOrders.push(cidStr); 
-//    console.log('Added file:', cidStr) 
-//}
-////ToDo
-//async function upinCID(ipfs: ipfsStruct, cidString: string ) {
-//    const encoder = new TextEncoder();
-//    const cid = await ipfs.fs.addBytes(encoder.encode('Hello World 101'), {
-//        onProgress: (evt) => {
-//            console.info('add event', evt.type, evt.detail)
-//        }
-//    })
-//    const cidStr = cid.toString();
-//    storageOrders.push(cidStr); 
-//    console.log('Added file:', cidStr) 
-//}
+async function pinCID(ipfs: ipfsStruct, cidString: string ) {
+    const cid2Pin = CID.parse(cidString); 
+    //retrive from nodes the cid2Pin
+    //await pin(cid2Pin)(ipfs.node);
+    // Pin in the local memory storage
+    ipfs.node.pins.add(cid2Pin)
+    storageOrders.push(cid2Pin)
+    console.log('pinned CID:', cidString) 
+}
+
+// for now is local CID
+async function unPinCID(ipfs: ipfsStruct, index: string ) {
+    const idxNum: number = +index;
+    let cid2Unpin = storageOrders[index];
+    try {
+        //await unpin(cid2Unpin)(ipfs.node) 
+        ipfs.node.pins.rm(cid2Unpin);
+        if (idxNum > -1 && idxNum < storageOrders.length) {
+            storageOrders.splice(idxNum, 1);
+            console.log(`Unpinned CID: ${cid2Unpin.toString()}`);
+        }
+    } catch(error){
+       console.log("Error: ", error); 
+    }
+}
 
 async function closeHelia(ipfs: ipfsStruct) {
   console.log("Closing session...")

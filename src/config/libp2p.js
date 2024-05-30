@@ -7,8 +7,12 @@ import { mdns } from '@libp2p/mdns'
 import { webSockets } from '@libp2p/websockets'
 import * as filters from '@libp2p/websockets/filters'
 import { circuitRelayServer } from '@libp2p/circuit-relay-v2'
+import { MemoryDatastore } from 'datastore-core'
+
+const datastore = new MemoryDatastore()
 
 export const Libp2pOptions = {
+  datastore,
   peerDiscovery: [
     mdns()
   ],

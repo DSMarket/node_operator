@@ -12,6 +12,7 @@
     "@chainsafe/libp2p-gossipsub": "^13.0.0",
     "@helia/unixfs": "^3.0.6",
     "@multiformats/multiaddr": "^12.2.3",
+    "datastore-core": "^9.2.9",
     "dotenv": "^16.4.5",
     "ethers": "^6.12.1",
     "helia": "^4.0.1",
