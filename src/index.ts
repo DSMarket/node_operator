@@ -1,8 +1,7 @@
 /* eslint-disable no-console */
 import { HeliaLibp2p } from 'helia';
-//import { pin, unpin } from 'helia/pin';
 import { UnixFS } from '@helia/unixfs';
-import { multiaddr, isMultiaddr, Multiaddr } from '@multiformats/multiaddr';
+import { multiaddr, isMultiaddr } from '@multiformats/multiaddr';
 import { CID } from 'multiformats/cid'
 import { Libp2p } from 'libp2p';
 import { peerIdFromString } from '@libp2p/peer-id';
@@ -25,8 +24,8 @@ import * as readline from "readline";
  [x] add Data method
  [x] get Data method
  [ ] take an order and pin (methods and time check)
- [ ] pin a CID
- [ ] unpin a CID
+ [x] pin a CID
+ [x] unpin a CID
  [ ] pin local multiaddrs
  [ ] update local multiaddrs(add public IP and others)
  [ ] unpin local multiaddrs
@@ -82,13 +81,6 @@ async function main() {
         output: process.stdout,
     });
     mainMenu(rl);
-
-    //const peer = await ipfs.libp2p.peerStore.get(ipfs.libp2p.dial)
-    //const peer = await ipfs.libp2p.peerStore.get(ipfs.libp2p.dial)
-    //await ipfs.libp2p.dial(node0);
-    //await ipfs.libp2p.hangUp(node0_ma)
-    //await ipfs.libp2p.hangUp(node1_ma)
-    //await ipfs.stop()
 }
 
 async function mainMenu(rl: readline.Interface) {
@@ -99,19 +91,19 @@ function menuOptions(rl: readline.Interface) {
   rl.question("Select operation: \n \
 Options: \n \
 [0]: Exit \n \
-[1]: PrintMenu \n \
-[2]: Get Local Node Info \n \
-[3]: Get Eth linked Data\n \
-[4]: Get Storage Orders\n \
-[5]: Get Dialed IPFS Peers\n \
-[6]: Dial a Multiaddrs\n \
-[7]: Dial a PeerID\n \
-[8]: Hang Up a Peer\n \
-[9]: Print Active Orders\n \
-[10]: Publish Data\n \
-[11]: Get Data\n \
-[12]: Pin CID\n \
-[13]: Unpin CID\n \
+[1]: Print menu \n \
+[2]: Get local node info \n \
+[3]: Get eth linked data\n \
+[4]: Get smart contract taken orders\n \
+[5]: List dialed peers\n \
+[6]: Dial a multiaddrs\n \
+[7]: Dial a peerId\n \
+[8]: Hang up a peerId\n \
+[9]: List active orders\n \
+[10]: Publish Data to IPFS\n \
+[11]: Read IPFS Data\n \
+[12]: Pin a CID\n \
+[13]: Unpin a CID\n \
 Option:",
     async (answer: string) => {
       console.log(`Selected: ${answer}\n`);
@@ -153,7 +145,7 @@ Option:",
           });
           break;
         case 8:
-            await printNumerableDialedPeers(ipfs);
+            printNumerableDialedPeers(ipfs);
             rl.question("please input a number to hangHup:", async (addrs) => {
             await hangUpAPeer(ipfs, addrs);
             mainMenu(rl);
@@ -227,10 +219,10 @@ async function DialAPeerID(ipfs: ipfsStruct, peer: string) {
     // Check tipes and merge reduce code duplication with dialMulltiaddr
     // ToDo: Use isName to check dns strings
     try{
-        console.log("going to dial:{peer}"); 
+        console.log("Dialing {peer}..."); 
         const dialPeerID = peerIdFromString(peer);
         await ipfs.node.libp2p.dial(dialPeerID);
-        console.log("dialed:", dialPeerID); 
+        console.log("OK: dialed:", dialPeerID); 
     } catch(error) {
        console.log("Error: ", error); 
     }
@@ -249,25 +241,19 @@ async function DialAMultiaddr(ipfs: ipfsStruct, addrs: string) {
     }
 }
 
-async function printNumerableDialedPeers(ipfs: ipfsStruct) {
+function printNumerableDialedPeers(ipfs: ipfsStruct): void {
     dialedPeers = ipfs.node.libp2p.getPeers();
     for(let [index, element] of dialedPeers.entries()){
         console.log(`${index} is peerID: ${element.toString()}`);
     }
 }
 
-// This is mostly for sentinels since they are not public nodes
-// Usually if there is a dicovery like mDNS and/or
-// the peer is dialing it will reconect
-// ToDO check how to block peers
 async function hangUpAPeer(ipfs: ipfsStruct, index: string) {
+    dialedPeers = ipfs.node.libp2p.getPeers();
     let hangUpPeerId = dialedPeers[index];
-    //let hangUpPeerId = dialedPeers[index].toString();
     try {
         await ipfs.node.libp2p.hangUp(hangUpPeerId);
         console.log(`peerID: ${hangUpPeerId.toString()},\n hanged Up`);
-        //await ipfs.node.libp2p.hangUp(multiaddr(`/ipfs.node/${hangUpPeerId}`));
-        //console.log(`peerID: ${hangUpPeerId},\n hanged Up`);
     } catch(error){
        console.log("Error: ", error); 
     }
@@ -275,20 +261,18 @@ async function hangUpAPeer(ipfs: ipfsStruct, index: string) {
 
 async function printNumerableOrders() {
     // TODO: Add pinned status ans structs
-    for(let [index, element] of storageOrders.entries()){
-        console.log(`${index} order has CID: ${element.toString()}`);
+    // verify with blockchain
+    try{
+      if(storageOrders.length > 0){
+        for(let [index, element] of storageOrders.entries()){
+          console.log(`${index} order has CID: ${element.toString()}`);
+        }
+      } else {
+          console.log("No Stored Orders"); 
+      }
+    } catch(error) {
+      console.log("Error:", error); 
     }
- //   try{
- //       if(storageOrders.length > 0){
- //           for(let [index, element] of storageOrders.entries()){
- //               console.log(`${index} is peerID: ${element.toString()}`);
- //           }
- //       } else {
- //        console.log("No Orders Stored"); 
- //       }
- //   } catch(error) {
- //      console.log("Error: ", error); 
- //   }
 }
 
 // This puts data into the Helia Node
@@ -321,18 +305,19 @@ async function getData(ipfs: ipfsStruct, orderIdx: string) {
     }
 
     console.log(`Data from: ${selectedOrder.toString()}`);
-    console.log(text)
+    console.log(text);
     //return text
 }
 
 async function pinCID(ipfs: ipfsStruct, cidString: string ) {
     const cid2Pin = CID.parse(cidString); 
-    //retrive from nodes the cid2Pin
-    //await pin(cid2Pin)(ipfs.node);
-    // Pin in the local memory storage
-    ipfs.node.pins.add(cid2Pin)
-    storageOrders.push(cid2Pin)
-    console.log('pinned CID:', cidString) 
+    try {
+      ipfs.node.pins.add(cid2Pin);
+      storageOrders.push(cid2Pin);
+      console.log('pinned CID:', cidString);
+    } catch(error) {
+      console.log("Pinning CID Error:", error);
+    }
 }
 
 // for now is local CID
@@ -340,14 +325,13 @@ async function unPinCID(ipfs: ipfsStruct, index: string ) {
     const idxNum: number = +index;
     let cid2Unpin = storageOrders[index];
     try {
-        //await unpin(cid2Unpin)(ipfs.node) 
-        ipfs.node.pins.rm(cid2Unpin);
-        if (idxNum > -1 && idxNum < storageOrders.length) {
-            storageOrders.splice(idxNum, 1);
-            console.log(`Unpinned CID: ${cid2Unpin.toString()}`);
-        }
+      ipfs.node.pins.rm(cid2Unpin);
+      if (idxNum > -1 && idxNum < storageOrders.length) {
+        storageOrders.splice(idxNum, 1);
+        console.log(`Unpinned CID: ${cid2Unpin.toString()}`);
+      }
     } catch(error){
-       console.log("Error: ", error); 
+      console.log("Error: ", error); 
     }
 }
 
@@ -356,7 +340,6 @@ async function closeHelia(ipfs: ipfsStruct) {
   await ipfs.node.stop()
   console.log("Good bye ;)")
 }
-
 
 main().catch((error) => {
     console.error(error);
