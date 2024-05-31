@@ -31,6 +31,8 @@ import * as readline from "readline";
  [ ] unpin local multiaddrs
  [ ] status report (report taken Orders and pinned files with deadline)
  [x] Ethers-js import wallet from .env [ ] Test with contracts
+ [ ] Integrate ABI from contracts and test
+ [ ] build methods for operations with blockchain
  [ ] make peerID static or import (not priority) *ToAsk
  [ ] setup dns resolver (not priority)
 */
@@ -38,8 +40,10 @@ import * as readline from "readline";
 interface EthersStruct {
     provider: JsonRpcProvider;
     wallet: Wallet;
-    contract: Contract;
-    abi: any[];
+    contractSFA: Contract;
+    contractMarket: Contract;
+    abiSFA: any[];
+    abiMarket: any[];
 }
 
 interface ipfsStruct {
@@ -190,8 +194,10 @@ Option:",
 
 async function getStorageOrders(eth: EthersStruct){
   // Add logic 
-  const nodeAddress: string = await eth.contract._CCDBAddress();
-  console.log('Greeting from contract:', nodeAddress);
+  const sfaAddress: string = await eth.contractSFA.getAddress();
+  console.log('Greeting from contract SFA:', sfaAddress);
+  const marketAddress: string = await eth.contractMarket.getAddress();
+  console.log('Greeting from contract Market:', marketAddress);
 }
 
 async function printLocalPeerData(ipfs: ipfsStruct) {
@@ -204,8 +210,10 @@ async function printLocalPeerData(ipfs: ipfsStruct) {
 async function printEthStruct(eth: EthersStruct) {
     console.log('Provider:', eth.provider);
     console.log('Wallet address:', eth.wallet.address);
-    console.log('Contract address:', await eth.contract.getAddress());
-    console.log('ABI:', eth.abi);
+    console.log('SFA address:', await eth.contractSFA.getAddress());
+    console.log('Market Contract address:', await eth.contractMarket.getAddress());
+    //console.log('ABI:', eth.abiSFA);
+    //console.log('ABI:', eth.abiMarket);
 }
 
 async function printDialedPeers(ipfs: ipfsStruct) {

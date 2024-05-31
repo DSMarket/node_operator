@@ -4,6 +4,8 @@
     "target": "es5",    
     "moduleResolution": "node",
     "downlevelIteration": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
 
     // only necessary for the example linting check, your project may not need
     // these settings
