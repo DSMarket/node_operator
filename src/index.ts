@@ -249,7 +249,6 @@ function printNumerableDialedPeers(ipfs: ipfsStruct): void {
 }
 
 async function hangUpAPeer(ipfs: ipfsStruct, index: string) {
-    dialedPeers = ipfs.node.libp2p.getPeers();
     let hangUpPeerId = dialedPeers[index];
     try {
         await ipfs.node.libp2p.hangUp(hangUpPeerId);
