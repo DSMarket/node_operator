@@ -18,8 +18,7 @@ import * as readline from "readline";
  [x] Add and test libp2p ports static
  [x] Add and test connecting websocket libp2p circuitRelayServer
  [x] restructure code
- [x] create CLI
- [x] dial a multiaddr
+ [x] create CLI [x] dial a multiaddr
  [x] dial a peerID ( conversion issues)*ToAsk
  [x] hangUp a peer (unknown if works)*ToAsk
  [x] add Data method
@@ -52,6 +51,11 @@ interface EthersStruct {
 interface ipfsStruct {
     node: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>;
     fs: UnixFS;
+}
+
+interface Host {
+    status: string
+    multiAddrs: string 
 }
 
 //interface SFA {
@@ -421,10 +425,17 @@ async function registerHost(
 // ToDo and test NoT working Yet.
 async function fetchHost(eth: EthersStruct, ipfs: ipfsStruct, addrs: string){
     try {
-    const multiaddrs = await eth.contractMarket.hosts[addrs].multiaddress; 
-        if(multiaddrs){
-          await DialAMultiaddr(ipfs, multiaddrs);
-        }
+    const result = await eth.contractMarket.hosts(addrs); 
+    const host: Host = {
+        status: result[0],
+        multiAddrs: result[1]
+    }
+    console.log("Host Status:", host.status);
+    console.log("Host Multiaddress:", host.multiAddrs)
+    // ask if you want to dial from outside cli?
+      if(host){
+        await DialAMultiaddr(ipfs, host.multiAddrs);
+      }
     } catch (error) {
       console.log("Error at fetching a host:", error);
     } 
@@ -453,7 +464,6 @@ async function createSFA(
       ipfs.node.pins.add(cid2Pin);
       storageOrders.push(cid2Pin);
       console.log('pinned CID:', cid2Pin);
-
     } catch (error) {
       console.log("Error at Host Registry:", error);
     }
