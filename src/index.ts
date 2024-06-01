@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import { HeliaLibp2p } from 'helia';
+import { BigNumberish, formatUnits, formatEther } from 'ethers';
 import { UnixFS } from '@helia/unixfs';
 import { multiaddr, isMultiaddr } from '@multiformats/multiaddr';
 import { CID } from 'multiformats/cid'
@@ -35,6 +36,8 @@ import * as readline from "readline";
  [ ] build methods for operations with blockchain
  [ ] make peerID static or import (not priority) *ToAsk
  [ ] setup dns resolver (not priority)
+ [ ] Add error handling
+ [ ] Move functions to modules
 */
 
 interface EthersStruct {
@@ -108,6 +111,8 @@ Options: \n \
 [11]: Read IPFS Data\n \
 [12]: Pin a CID\n \
 [13]: Unpin a CID\n \
+[14]: Account Blance\n \
+[15]: Change Wallet\n \
 Option:",
     async (answer: string) => {
       console.log(`Selected: ${answer}\n`);
@@ -183,6 +188,16 @@ Option:",
             rl.question("please input a number to upin:", async (index) => {
             await unPinCID(ipfs, index);
             mainMenu(rl);
+          });
+          break;
+        case 14:
+          await balanceERC20(eth);
+          mainMenu(rl);
+          break;
+        case 15:
+          rl.question("please input a private key:", async (pKey) => {
+          await importPKey(pKey);
+          mainMenu(rl);
           });
           break;
         default:
@@ -347,6 +362,31 @@ async function closeHelia(ipfs: ipfsStruct) {
   await ipfs.node.stop()
   console.log("Good bye ;)")
 }
+
+// Protocol Functions
+async function balanceERC20(eth: EthersStruct, address?: string) {
+    console.log("EOAccount is:", eth.wallet.getAddress() )
+    const walletAddress = address || eth.wallet.getAddress();
+    const decimals = await eth.contractSFA.decimals()
+    const sfaBalance = await eth.contractSFA.balanceOf(walletAddress);
+    console.log("SFA Balance:", formatUnits(sfaBalance.toString(), decimals))
+    const ethBalance = await eth.provider.getBalance(walletAddress)
+    console.log("ETH Balance:", formatEther(ethBalance));
+}
+
+async function importPKey(pKey: string) {
+    try {
+      eth = await initEthers(pKey);
+      console.log("new EOAccount is:", eth.wallet.getAddress() );
+    } catch (error) {
+      console.log("Error on importPKey:", error);
+    }
+}
+
+
+//async function transferTokens(eth: EthersStruct, toAddress: string){
+//    eth.wallet.approve()
+//}
 
 main().catch((error) => {
     console.error(error);
