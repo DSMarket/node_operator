@@ -32,7 +32,7 @@ import * as readline from "readline";
  [ ] unpin local multiaddrs
  [ ] status report (report taken Orders and pinned files with deadline)
  [x] Ethers-js import wallet from .env [ ] Test with contracts
- [ ] Integrate ABI from contracts and test
+ [x] Integrate ABI from contracts and test
  [ ] build methods for operations with blockchain
  [ ] make peerID static or import (not priority) *ToAsk
  [ ] setup dns resolver (not priority)
@@ -54,10 +54,12 @@ interface ipfsStruct {
     fs: UnixFS;
 }
 
-//interface storageOrder {
-//    orderID: string;
-//    makerAddrs: string;
-//    data: string;
+//interface SFA {
+//    ownerAddrs: string;
+//    sfaID: string;
+//    vesting: string
+//    cid: CID;
+//    startTime: string;
 //    TTL: string;
 //}
 
@@ -65,6 +67,7 @@ let eth: EthersStruct;
 let ipfs: ipfsStruct;
 let dialedPeers: PeerId [];
 let storageOrders: CID[] = [];
+//let SFAs: SFA[] = [];
 
 async function main() {
 
@@ -113,6 +116,8 @@ Options: \n \
 [13]: Unpin a CID\n \
 [14]: Account Blance\n \
 [15]: Change Wallet\n \
+[16]: Register & Dial Host\n \
+[17]: Fetch & Dial Host\n \
 Option:",
     async (answer: string) => {
       console.log(`Selected: ${answer}\n`);
@@ -197,6 +202,18 @@ Option:",
         case 15:
           rl.question("please input a private key:", async (pKey) => {
           await importPKey(pKey);
+          mainMenu(rl);
+          });
+          break;
+        case 16:
+          rl.question("please input a host multiaddr:", async (addrs) => {
+          await registerHost(eth, ipfs, addrs);
+          mainMenu(rl);
+          });
+          break;
+        case 17:
+          rl.question("please input a host eth Address:", async (addrs) => {
+          await fetchHost(eth, ipfs, addrs);
           mainMenu(rl);
           });
           break;
@@ -383,10 +400,71 @@ async function importPKey(pKey: string) {
     }
 }
 
+async function registerHost(
+    eth: EthersStruct,
+    ipfs: ipfsStruct,
+    multiAddrs: string){
 
+    try {
+      const tx = await eth.contractMarket.registerHost(multiAddrs)
+      const receipt = await tx.wait();
+      // ToDO Catch Error if reverted and do not dial
+      console.log(`The host was registered (${receipt.transactionHash})`);
+      // dial host (must be accessible multiaddrs)
+      await DialAMultiaddr(ipfs, multiAddrs);
+    } catch (error) {
+      console.log("Error at Host Registry:", error);
+    }
+}
+
+
+// ToDo and test NoT working Yet.
+async function fetchHost(eth: EthersStruct, ipfs: ipfsStruct, addrs: string){
+    try {
+    const multiaddrs = await eth.contractMarket.hosts[addrs].multiaddress; 
+        if(multiaddrs){
+          await DialAMultiaddr(ipfs, multiaddrs);
+        }
+    } catch (error) {
+      console.log("Error at fetching a host:", error);
+    } 
+}
+
+//ToDo allow and transfer ERC20 and maybe eth?
 //async function transferTokens(eth: EthersStruct, toAddress: string){
-//    eth.wallet.approve()
+//    //const tx = await eth.wallet.sendTransaction
 //}
+
+// ToDo and test
+// SFA Logic To Test, right now only stores CID for Proof of COncept
+async function createSFA(
+    eth: EthersStruct,
+    ipfs: ipfsStruct,
+    vesting: string,
+    cid: string,
+    startTime: string,
+    ttl: string){
+    try {
+      const tx = await eth.contractMarket.createSFA(cid, vesting, startTime,ttl)
+      const receipt = await tx.wait();
+      console.log(`SFA was registered on (${receipt.transactionHash})`);
+      // INSTEAD USE SFAs but requires lots of change in all the code.
+      const cid2Pin = CID.parse(cid); 
+      ipfs.node.pins.add(cid2Pin);
+      storageOrders.push(cid2Pin);
+      console.log('pinned CID:', cid2Pin);
+
+    } catch (error) {
+      console.log("Error at Host Registry:", error);
+    }
+}
+
+// ToDo and test
+// Similar to fetchHost?
+//async function getSFA(){
+//}
+//
+
 
 main().catch((error) => {
     console.error(error);
