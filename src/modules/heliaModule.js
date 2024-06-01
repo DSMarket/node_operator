@@ -1,9 +1,7 @@
-import { createHelia } from 'helia';
-import { unixfs } from '@helia/unixfs'
-import { Libp2pOptions } from '../config/libp2p.js';
-import { createLibp2p } from 'libp2p';
-//import * as dotenv from 'dotenv';
-//dotenv.config();
+const { createHelia } = require("helia");
+const { unixfs } = require("@helia/unixfs");
+const { Libp2pOptions } = require("../config/libp2p.js");
+const { createLibp2p } = require("libp2p");
 
 export default async function initHelia() {
   // ToDo add logic to import privKey if exists
@@ -12,11 +10,8 @@ export default async function initHelia() {
     const libp2p = await createLibp2p(Libp2pOptions);
     const node = await createHelia({ libp2p });
     const fs = unixfs(node);
-    return {
-        node,
-        fs,
-    };
+    return { node, fs };
   } catch (error) {
-    console.error('Error setting up helia', error);
+    console.error("Error setting up helia", error);
   }
 }
