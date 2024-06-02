@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { HeliaLibp2p } from 'helia';
-import { BigNumberish, formatUnits, formatEther } from 'ethers';
+import { formatUnits, formatEther, parseUnits, parseEther } from 'ethers';
 import { UnixFS } from '@helia/unixfs';
 import { multiaddr, isMultiaddr } from '@multiformats/multiaddr';
 import { CID } from 'multiformats/cid'
@@ -49,13 +49,13 @@ interface EthersStruct {
 }
 
 interface ipfsStruct {
-    node: HeliaLibp2p<Libp2p<{ x: Record<string, unknown>}>>;
+    node: HeliaLibp2p<Libp2p<{ x: Record<string, unknown> }>>;
     fs: UnixFS;
 }
 
 interface Host {
     status: string
-    multiAddrs: string 
+    multiAddrs: string
 }
 
 //interface SFA {
@@ -69,7 +69,7 @@ interface Host {
 
 let eth: EthersStruct;
 let ipfs: ipfsStruct;
-let dialedPeers: PeerId [];
+let dialedPeers: PeerId[];
 let storageOrders: CID[] = [];
 //let SFAs: SFA[] = [];
 
@@ -98,11 +98,11 @@ async function main() {
 }
 
 async function mainMenu(rl: readline.Interface) {
-  menuOptions(rl);
+    menuOptions(rl);
 }
 
 function menuOptions(rl: readline.Interface) {
-  rl.question("Select operation: \n \
+    rl.question("Select operation: \n \
 Options: \n \
 [0]: Exit \n \
 [1]: Print menu \n \
@@ -122,126 +122,146 @@ Options: \n \
 [15]: Change Wallet\n \
 [16]: Register & Dial Host\n \
 [17]: Fetch & Dial Host\n \
+[18]: Transfer Tokens\n \
+[19]: Transfer ETH\n \
 Option:",
-    async (answer: string) => {
-      console.log(`Selected: ${answer}\n`);
-      const option = Number(answer);
-      switch (option) {
-        case 0:
-          closeHelia(ipfs);
-          rl.close();
-          return;
-        case 1:
-          mainMenu(rl);
-          return;
-        case 2:
-          await printLocalPeerData(ipfs);
-          mainMenu(rl);
-          break;
-        case 3:
-          await printEthStruct(eth);
-          mainMenu(rl);
-          break;
-        case 4:
-          await getStorageOrders(eth);
-          mainMenu(rl);
-          break;
-        case 5:
-          await printDialedPeers(ipfs);
-          mainMenu(rl);
-          break;
-        case 6:
-          rl.question("please input the peer multiaddrs:", async (addrs) => {
-            await DialAMultiaddr(ipfs, addrs);
-            mainMenu(rl);
-          });
-          break;
-        case 7:
-          rl.question("please input the peerID:", async (addrs) => {
-            await DialAPeerID(ipfs, addrs);
-            mainMenu(rl);
-          });
-          break;
-        case 8:
-            printNumerableDialedPeers(ipfs);
-            rl.question("please input a number to hangHup:", async (addrs) => {
-            await hangUpAPeer(ipfs, addrs);
-            mainMenu(rl);
-          });
-          break;
-        case 9:
-          await printNumerableOrders();
-          mainMenu(rl);
-          break; 
-        case 10:
-            rl.question("please input Data:", async (data) => {
-            await pushData(ipfs, data);
-            mainMenu(rl);
-          });
-          break;
-        case 11:
-            await printNumerableOrders();
-            rl.question("please input a number of Order:", async (order) => {
-            await getData(ipfs, order);
-            mainMenu(rl);
-          });
-          break;
-        case 12:
-            rl.question("please input CID to pin:", async (cidString) => {
-            await pinCID(ipfs, cidString);
-            mainMenu(rl);
-          });
-          break;
-        case 13:
-            await printNumerableOrders();
-            rl.question("please input a number to upin:", async (index) => {
-            await unPinCID(ipfs, index);
-            mainMenu(rl);
-          });
-          break;
-        case 14:
-          await balanceERC20(eth);
-          mainMenu(rl);
-          break;
-        case 15:
-          rl.question("please input a private key:", async (pKey) => {
-          await importPKey(pKey);
-          mainMenu(rl);
-          });
-          break;
-        case 16:
-          rl.question("please input a host multiaddr:", async (addrs) => {
-          await registerHost(eth, ipfs, addrs);
-          mainMenu(rl);
-          });
-          break;
-        case 17:
-          rl.question("please input a host eth Address:", async (addrs) => {
-          await fetchHost(eth, ipfs, addrs);
-          mainMenu(rl);
-          });
-          break;
-        default:
-          throw new Error("Invalid option");
-      }
-    }
-  );
+        async (answer: string) => {
+            console.log(`Selected: ${answer}\n`);
+            const option = Number(answer);
+            switch (option) {
+                case 0:
+                    closeHelia(ipfs);
+                    rl.close();
+                    return;
+                case 1:
+                    mainMenu(rl);
+                    return;
+                case 2:
+                    await printLocalPeerData(ipfs);
+                    mainMenu(rl);
+                    break;
+                case 3:
+                    await printEthStruct(eth);
+                    mainMenu(rl);
+                    break;
+                case 4:
+                    await getStorageOrders(eth);
+                    mainMenu(rl);
+                    break;
+                case 5:
+                    await printDialedPeers(ipfs);
+                    mainMenu(rl);
+                    break;
+                case 6:
+                    rl.question("please input the peer multiaddrs:", async (addrs) => {
+                        await DialAMultiaddr(ipfs, addrs);
+                        mainMenu(rl);
+                    });
+                    break;
+                case 7:
+                    rl.question("please input the peerID:", async (addrs) => {
+                        await DialAPeerID(ipfs, addrs);
+                        mainMenu(rl);
+                    });
+                    break;
+                case 8:
+                    printNumerableDialedPeers(ipfs);
+                    rl.question("please input a number to hangHup:", async (addrs) => {
+                        await hangUpAPeer(ipfs, addrs);
+                        mainMenu(rl);
+                    });
+                    break;
+                case 9:
+                    await printNumerableOrders();
+                    mainMenu(rl);
+                    break;
+                case 10:
+                    rl.question("please input Data:", async (data) => {
+                        await pushData(ipfs, data);
+                        mainMenu(rl);
+                    });
+                    break;
+                case 11:
+                    await printNumerableOrders();
+                    rl.question("please input a number of Order:", async (order) => {
+                        await getData(ipfs, order);
+                        mainMenu(rl);
+                    });
+                    break;
+                case 12:
+                    rl.question("please input CID to pin:", async (cidString) => {
+                        await pinCID(ipfs, cidString);
+                        mainMenu(rl);
+                    });
+                    break;
+                case 13:
+                    await printNumerableOrders();
+                    rl.question("please input a number to upin:", async (index) => {
+                        await unPinCID(ipfs, index);
+                        mainMenu(rl);
+                    });
+                    break;
+                case 14:
+                    await balanceERC20(eth);
+                    mainMenu(rl);
+                    break;
+                case 15:
+                    rl.question("please input a private key:", async (pKey) => {
+                        await importPKey(pKey);
+                        mainMenu(rl);
+                    });
+                    break;
+                case 16:
+                    rl.question("please input a host multiaddr:", async (addrs) => {
+                        await registerHost(eth, ipfs, addrs);
+                        mainMenu(rl);
+                    });
+                    break;
+                case 17:
+                    rl.question("please input a host eth Address:", async (addrs) => {
+                        await fetchHost(eth, ipfs, addrs);
+                        mainMenu(rl);
+                    });
+                    break;
+                case 18:
+                    rl.question("please input an Ethereum Address:", async (to) => {
+                      rl.question("please input the Tokens amount:", async (amount) => {
+                        await transferTokens(eth, to, amount);
+                        await balanceERC20(eth);
+                        mainMenu(rl);
+                      });
+                    });
+                    break;
+                case 19:
+                    rl.question("please input an Ethereum Address:", async (to) => {
+                      rl.question("please input the ETH amount:", async (amount) => {
+                        await transferETH(eth, to, amount);
+                        await balanceERC20(eth);
+                        mainMenu(rl);
+                      });
+                    });
+                    break;
+                default:
+                    throw new Error("Invalid option");
+            }
+        }
+    );
 }
 
-async function getStorageOrders(eth: EthersStruct){
-  // Add logic 
-  const sfaAddress: string = await eth.contractSFA.getAddress();
-  console.log('Greeting from contract SFA:', sfaAddress);
-  const marketAddress: string = await eth.contractMarket.getAddress();
-  console.log('Greeting from contract Market:', marketAddress);
+async function getStorageOrders(eth: EthersStruct) {
+    // Add logic 
+    const sfaAddress: string = await eth.contractSFA.getAddress();
+    console.log('Greeting from contract SFA:', sfaAddress);
+    const marketAddress: string = await eth.contractMarket.getAddress();
+    console.log('Greeting from contract Market:', marketAddress);
 }
 
 async function printLocalPeerData(ipfs: ipfsStruct) {
-  console.info('Helia is running');
-  console.info('PeerId:', ipfs.node.libp2p.peerId.toString());
-  console.info('MultiAddress of this Node:');
-  const addr = ipfs.node.libp2p.getMultiaddrs();
-  console.log(addr);
+    console.info('Helia is running');
+    console.info('PeerId:', ipfs.node.libp2p.peerId.toString());
+    console.info('MultiAddress of this Node:');
+    const addr = ipfs.node.libp2p.getMultiaddrs();
+    console.log(addr);
 }
 async function printEthStruct(eth: EthersStruct) {
     console.log('Provider:', eth.provider);
@@ -259,35 +279,35 @@ async function printDialedPeers(ipfs: ipfsStruct) {
 }
 
 
-async function DialAPeerID(ipfs: ipfsStruct, peer: string) { 
+async function DialAPeerID(ipfs: ipfsStruct, peer: string) {
     // Check tipes and merge reduce code duplication with dialMulltiaddr
     // ToDo: Use isName to check dns strings
-    try{
-        console.log("Dialing {peer}..."); 
+    try {
+        console.log("Dialing {peer}...");
         const dialPeerID = peerIdFromString(peer);
         await ipfs.node.libp2p.dial(dialPeerID);
-        console.log("OK: dialed:", dialPeerID); 
-    } catch(error) {
-       console.log("Error: ", error); 
+        console.log("OK: dialed:", dialPeerID);
+    } catch (error) {
+        console.log("Error: ", error);
     }
 }
 
-async function DialAMultiaddr(ipfs: ipfsStruct, addrs: string) { 
+async function DialAMultiaddr(ipfs: ipfsStruct, addrs: string) {
     // ToDo: Use isName to check dns strings
     const peerMultiAddr = multiaddr(addrs);
-    try  {
-        if(isMultiaddr(peerMultiAddr)){
+    try {
+        if (isMultiaddr(peerMultiAddr)) {
             await ipfs.node.libp2p.dial(peerMultiAddr);
-            console.log("dialed:", peerMultiAddr); 
+            console.log("dialed:", peerMultiAddr);
         }
-    } catch(error) {
-       console.log("Error: ", error); 
+    } catch (error) {
+        console.log("Error: ", error);
     }
 }
 
 function printNumerableDialedPeers(ipfs: ipfsStruct): void {
     dialedPeers = ipfs.node.libp2p.getPeers();
-    for(let [index, element] of dialedPeers.entries()){
+    for (let [index, element] of dialedPeers.entries()) {
         console.log(`${index} is peerID: ${element.toString()}`);
     }
 }
@@ -297,37 +317,37 @@ async function hangUpAPeer(ipfs: ipfsStruct, index: string) {
     try {
         await ipfs.node.libp2p.hangUp(hangUpPeerId);
         console.log(`peerID: ${hangUpPeerId.toString()},\n hanged Up`);
-    } catch(error){
-       console.log("Error: ", error); 
+    } catch (error) {
+        console.log("Error: ", error);
     }
 }
 
 async function printNumerableOrders() {
     // TODO: Add pinned status ans structs
     // verify with blockchain
-    try{
-      if(storageOrders.length > 0){
-        for(let [index, element] of storageOrders.entries()){
-          console.log(`${index} order has CID: ${element.toString()}`);
+    try {
+        if (storageOrders.length > 0) {
+            for (let [index, element] of storageOrders.entries()) {
+                console.log(`${index} order has CID: ${element.toString()}`);
+            }
+        } else {
+            console.log("No Stored Orders");
         }
-      } else {
-          console.log("No Stored Orders"); 
-      }
-    } catch(error) {
-      console.log("Error:", error); 
+    } catch (error) {
+        console.log("Error:", error);
     }
 }
 
 // This puts data into the Helia Node
-async function pushData(ipfs: ipfsStruct, data: string ) {
+async function pushData(ipfs: ipfsStruct, data: string) {
     const encoder = new TextEncoder();
     const cid = await ipfs.fs.addBytes(encoder.encode(data), {
         onProgress: (evt) => {
             console.info('add event', evt.type, evt.detail)
         }
     })
-    storageOrders.push(cid); 
-    console.log('Added file:', cid.toString()) 
+    storageOrders.push(cid);
+    console.log('Added file:', cid.toString())
 }
 
 // This gets data from the Helia Node and decodes it
@@ -352,41 +372,41 @@ async function getData(ipfs: ipfsStruct, orderIdx: string) {
     //return text
 }
 
-async function pinCID(ipfs: ipfsStruct, cidString: string ) {
-    const cid2Pin = CID.parse(cidString); 
+async function pinCID(ipfs: ipfsStruct, cidString: string) {
+    const cid2Pin = CID.parse(cidString);
     try {
-      ipfs.node.pins.add(cid2Pin);
-      storageOrders.push(cid2Pin);
-      console.log('pinned CID:', cidString);
-    } catch(error) {
-      console.log("Pinning CID Error:", error);
+        ipfs.node.pins.add(cid2Pin);
+        storageOrders.push(cid2Pin);
+        console.log('pinned CID:', cidString);
+    } catch (error) {
+        console.log("Pinning CID Error:", error);
     }
 }
 
 // for now is local CID
-async function unPinCID(ipfs: ipfsStruct, index: string ) {
+async function unPinCID(ipfs: ipfsStruct, index: string) {
     const idxNum: number = +index;
     let cid2Unpin = storageOrders[index];
     try {
-      ipfs.node.pins.rm(cid2Unpin);
-      if (idxNum > -1 && idxNum < storageOrders.length) {
-        storageOrders.splice(idxNum, 1);
-        console.log(`Unpinned CID: ${cid2Unpin.toString()}`);
-      }
-    } catch(error){
-      console.log("Error: ", error); 
+        ipfs.node.pins.rm(cid2Unpin);
+        if (idxNum > -1 && idxNum < storageOrders.length) {
+            storageOrders.splice(idxNum, 1);
+            console.log(`Unpinned CID: ${cid2Unpin.toString()}`);
+        }
+    } catch (error) {
+        console.log("Error: ", error);
     }
 }
 
 async function closeHelia(ipfs: ipfsStruct) {
-  console.log("Closing session...")
-  await ipfs.node.stop()
-  console.log("Good bye ;)")
+    console.log("Closing session...")
+    await ipfs.node.stop()
+    console.log("Good bye ;)")
 }
 
 // Protocol Functions
 async function balanceERC20(eth: EthersStruct, address?: string) {
-    console.log("EOAccount is:", eth.wallet.getAddress() )
+    console.log("EOAccount is:", eth.wallet.getAddress())
     const walletAddress = address || eth.wallet.getAddress();
     const decimals = await eth.contractSFA.decimals()
     const sfaBalance = await eth.contractSFA.balanceOf(walletAddress);
@@ -397,54 +417,85 @@ async function balanceERC20(eth: EthersStruct, address?: string) {
 
 async function importPKey(pKey: string) {
     try {
-      eth = await initEthers(pKey);
-      console.log("new EOAccount is:", eth.wallet.getAddress() );
+        eth = await initEthers(pKey);
+        console.log("new EOAccount is:", eth.wallet.getAddress());
     } catch (error) {
-      console.log("Error on importPKey:", error);
+        console.log("Error on importPKey:", error);
     }
 }
 
 async function registerHost(
     eth: EthersStruct,
     ipfs: ipfsStruct,
-    multiAddrs: string){
+    multiAddrs: string) {
 
     try {
-      const tx = await eth.contractMarket.registerHost(multiAddrs)
+        const tx = await eth.contractMarket.registerHost(multiAddrs)
+        const receipt = await tx.wait();
+        // ToDO Catch Error if reverted and do not dial
+        console.log(`The host was registered (${receipt.transactionHash})`);
+        // dial host (must be accessible multiaddrs)
+        await DialAMultiaddr(ipfs, multiAddrs);
+    } catch (error) {
+        console.log("Error at Host Registry:", error);
+    }
+}
+
+
+async function fetchHost(eth: EthersStruct, ipfs: ipfsStruct, addrs: string) {
+    try {
+        const result = await eth.contractMarket.hosts(addrs);
+        const host: Host = {
+            status: result[0],
+            multiAddrs: result[1]
+        };
+        console.log("Host Status:", host.status);
+        console.log("Host Multiaddress:", host.multiAddrs);
+        // ask if you want to dial from outside cli?
+        if (host) {
+            await DialAMultiaddr(ipfs, host.multiAddrs);
+        }
+    } catch (error) {
+        console.log("Error at fetching a host:", error);
+    }
+}
+
+//Transfer ERC20
+async function transferTokens(
+    eth: EthersStruct,
+    to: string,
+    amount: string
+) {
+    const decimals = await eth.contractSFA.decimals()
+    const tokenAmount = parseUnits(amount, decimals);
+    try {
+      const tx = await eth.contractSFA.transfer(to, tokenAmount);
       const receipt = await tx.wait();
-      // ToDO Catch Error if reverted and do not dial
-      console.log(`The host was registered (${receipt.transactionHash})`);
-      // dial host (must be accessible multiaddrs)
-      await DialAMultiaddr(ipfs, multiAddrs);
+      console.log(`The tokens where sent on TxID: (${receipt.transactionHash})`); 
     } catch (error) {
-      console.log("Error at Host Registry:", error);
+        console.log("Error transfering tokens:", error);
     }
 }
 
-
-// ToDo and test NoT working Yet.
-async function fetchHost(eth: EthersStruct, ipfs: ipfsStruct, addrs: string){
+//Transfer ETH
+async function transferETH(
+    eth: EthersStruct,
+    to: string,
+    amount: string
+) {
+    const value = parseEther(amount);
+    const tx = {
+        to: to,
+        value: value,
+    };
     try {
-    const result = await eth.contractMarket.hosts(addrs); 
-    const host: Host = {
-        status: result[0],
-        multiAddrs: result[1]
-    }
-    console.log("Host Status:", host.status);
-    console.log("Host Multiaddress:", host.multiAddrs)
-    // ask if you want to dial from outside cli?
-      if(host){
-        await DialAMultiaddr(ipfs, host.multiAddrs);
-      }
+      const txResponse = await eth.wallet.sendTransaction(tx);
+      const receipt = await txResponse.wait();
+      console.log(`The ${value} ETH where sent to ${to}\n  on TxID: (${receipt})`); 
     } catch (error) {
-      console.log("Error at fetching a host:", error);
-    } 
+        console.log("Error transfering ETH:", error);
+    }
 }
-
-//ToDo allow and transfer ERC20 and maybe eth?
-//async function transferTokens(eth: EthersStruct, toAddress: string){
-//    //const tx = await eth.wallet.sendTransaction
-//}
 
 // ToDo and test
 // SFA Logic To Test, right now only stores CID for Proof of COncept
@@ -454,18 +505,18 @@ async function createSFA(
     vesting: string,
     cid: string,
     startTime: string,
-    ttl: string){
+    ttl: string) {
     try {
-      const tx = await eth.contractMarket.createSFA(cid, vesting, startTime,ttl)
-      const receipt = await tx.wait();
-      console.log(`SFA was registered on (${receipt.transactionHash})`);
-      // INSTEAD USE SFAs but requires lots of change in all the code.
-      const cid2Pin = CID.parse(cid); 
-      ipfs.node.pins.add(cid2Pin);
-      storageOrders.push(cid2Pin);
-      console.log('pinned CID:', cid2Pin);
+        const tx = await eth.contractMarket.createSFA(cid, vesting, startTime, ttl)
+        const receipt = await tx.wait();
+        console.log(`SFA was registered on (${receipt.transactionHash})`);
+        // INSTEAD USE SFAs but requires lots of change in all the code.
+        const cid2Pin = CID.parse(cid);
+        ipfs.node.pins.add(cid2Pin);
+        storageOrders.push(cid2Pin);
+        console.log('pinned CID:', cid2Pin);
     } catch (error) {
-      console.log("Error at Host Registry:", error);
+        console.log("Error at Host Registry:", error);
     }
 }
 
