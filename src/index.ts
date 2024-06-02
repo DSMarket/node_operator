@@ -124,6 +124,7 @@ Options: \n \
 [17]: Fetch & Dial Host\n \
 [18]: Transfer Tokens\n \
 [19]: Transfer ETH\n \
+[20]: Allow Tokens to Market\n \
 Option:",
         async (answer: string) => {
             console.log(`Selected: ${answer}\n`);
@@ -239,6 +240,13 @@ Option:",
                         await balanceERC20(eth);
                         mainMenu(rl);
                       });
+                    });
+                    break;
+                case 20:
+                    rl.question("please input the Tokens amount to allow:", async (amount) => {
+                      await allowTokens(eth, await eth.contractMarket.getAddress(),
+                                           amount);
+                      mainMenu(rl);
                     });
                     break;
                 default:
@@ -471,7 +479,24 @@ async function transferTokens(
     try {
       const tx = await eth.contractSFA.transfer(to, tokenAmount);
       const receipt = await tx.wait();
-      console.log(`The tokens where sent on TxID: (${receipt.transactionHash})`); 
+      console.log(`The ${tokenAmount} tokens where sent to ${to}\n  on TxID: (${receipt})`); 
+    } catch (error) {
+        console.log("Error transfering tokens:", error);
+    }
+}
+
+//Give Allowance
+async function allowTokens(
+    eth: EthersStruct,
+    to: string,
+    amount: string
+) {
+    const decimals = await eth.contractSFA.decimals()
+    const tokenAmount = parseUnits(amount, decimals);
+    try {
+      const tx = await eth.contractSFA.approve(to, tokenAmount);
+      const receipt = await tx.wait();
+      console.log(`The ${tokenAmount} Tokens where approved to ${to}\n  on TxID: (${receipt})`); 
     } catch (error) {
         console.log("Error transfering tokens:", error);
     }
@@ -496,6 +521,8 @@ async function transferETH(
         console.log("Error transfering ETH:", error);
     }
 }
+
+
 
 // ToDo and test
 // SFA Logic To Test, right now only stores CID for Proof of COncept
