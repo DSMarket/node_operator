@@ -2,8 +2,7 @@
 import { HeliaLibp2p } from 'helia';
 import { formatUnits, formatEther, parseUnits, parseEther } from 'ethers';
 import { UnixFS } from '@helia/unixfs';
-import { multiaddr, isMultiaddr } from '@multiformats/multiaddr';
-import { CID } from 'multiformats/cid'
+import { multiaddr, isMultiaddr } from '@multiformats/multiaddr'; import { CID } from 'multiformats/cid'
 import { Libp2p } from 'libp2p';
 import { peerIdFromString } from '@libp2p/peer-id';
 import { PeerId } from '@libp2p/interface';
@@ -58,14 +57,18 @@ interface Host {
     multiAddrs: string
 }
 
-//interface SFA {
-//    ownerAddrs: string;
-//    sfaID: string;
-//    vesting: string
-//    cid: CID;
-//    startTime: string;
-//    TTL: string;
-//}
+interface SFA {
+    publisher: string;
+    cid: string ;
+    vesting: string;
+    vested: string;
+    startTime: string;
+    ttl: string;
+    status: string;
+    host: string;
+    pendingHost: string;
+    collateral: string;
+}
 
 let eth: EthersStruct;
 let ipfs: ipfsStruct;
@@ -78,11 +81,11 @@ async function main() {
     // Setup and Initialize 
     try {
         console.log("initializing Ethers");
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
         eth = await initEthers();
         console.log("Ethers Ready!");
         console.log("initializing Helia");
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
         ipfs = await initHelia();
         console.log("Helia Ready!");
     } catch (error) {
@@ -125,6 +128,8 @@ Options: \n \
 [18]: Transfer Tokens\n \
 [19]: Transfer ETH\n \
 [20]: Allow Tokens to Market\n \
+[21]: Publish SFA\n \
+[22]: Host SFA\n \
 Option:",
         async (answer: string) => {
             console.log(`Selected: ${answer}\n`);
@@ -249,6 +254,30 @@ Option:",
                       mainMenu(rl);
                     });
                     break;
+                case 21:
+                    rl.question("please input Data:", async (data) => {
+                      rl.question("please input vesting amount:", async (vesting) => {
+                        rl.question("please input start time(seconds:)", async (startTime) => {
+                          rl.question("please input SFAs TTL(seconds:)", async (TTL) => {
+                            try {
+                              await pushData(ipfs, data);
+                              let cid = storageOrders[storageOrders.length - 1].toString();
+                              await createSFA(eth, vesting, cid,
+                                              await getTimeStamp(startTime),
+                                              await getTimeStamp(TTL));
+                            } catch (error) {
+                              console.log("Error at Host Registry:", error);
+                            }
+                            mainMenu(rl);
+                          });
+                        });
+                      });
+                    });
+                    break;
+                case 22:
+                      await hostSFA(eth, ipfs);
+                      mainMenu(rl);
+                    break;
                 default:
                     throw new Error("Invalid option");
             }
@@ -356,6 +385,7 @@ async function pushData(ipfs: ipfsStruct, data: string) {
     })
     storageOrders.push(cid);
     console.log('Added file:', cid.toString())
+    return cid.toString()
 }
 
 // This gets data from the Helia Node and decodes it
@@ -522,36 +552,60 @@ async function transferETH(
     }
 }
 
+async function getTimeStamp(secondsToAdd: string): Promise<string> {
+    const latestBlock = await eth.provider.getBlock('latest');
 
+    if (latestBlock === null) {
+        throw new Error('Failed to fetch the latest block.');
+    }
+    const newTimestamp = latestBlock.timestamp + secondsToAdd;
+
+    return newTimestamp.toString(); 
+}
 
 // ToDo and test
 // SFA Logic To Test, right now only stores CID for Proof of COncept
 async function createSFA(
     eth: EthersStruct,
-    ipfs: ipfsStruct,
     vesting: string,
     cid: string,
     startTime: string,
     ttl: string) {
     try {
-        const tx = await eth.contractMarket.createSFA(cid, vesting, startTime, ttl)
+        const tx = await eth.contractMarket.createSFA(cid, vesting, startTime, ttl);
         const receipt = await tx.wait();
         console.log(`SFA was registered on (${receipt.transactionHash})`);
-        // INSTEAD USE SFAs but requires lots of change in all the code.
-        const cid2Pin = CID.parse(cid);
-        ipfs.node.pins.add(cid2Pin);
-        storageOrders.push(cid2Pin);
-        console.log('pinned CID:', cid2Pin);
     } catch (error) {
         console.log("Error at Host Registry:", error);
     }
 }
 
-// ToDo and test
-// Similar to fetchHost?
-//async function getSFA(){
-//}
-//
+async function hostSFA(eth: EthersStruct, ipfs: ipfsStruct) {
+    try {
+        const sfaCounter = await eth.contractMarket.sfaCounter();
+        await eth.contractMarket.claimHost(sfaCounter);
+        const sfa = await eth.contractMarket.sfas(sfaCounter);
+        if (sfa === null) {
+            throw new Error('Failed to fetch the latest block.');
+        }
+        const sfaStruct: SFA = {
+            publisher: sfa[0],
+            cid: sfa[1],
+            vesting: sfa[2],
+            vested: sfa[3],
+            startTime: sfa[4],
+            ttl: sfa[5],
+            status: sfa[6],
+            host: sfa[7],
+            pendingHost: sfa[8],
+            collateral: sfa[9]
+        }
+        await pinCID(ipfs, sfaStruct.cid);
+        console.log(`SFA hosted with cid ${sfaStruct.cid} and sfaCounter: ${sfaCounter}`);
+    } catch (error) {
+        console.log("Error at fetching a host:", error);
+    }
+}
 
 
 main().catch((error) => {
