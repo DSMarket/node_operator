@@ -1,16 +1,12 @@
 /* eslint-disable no-console */
-const { HeliaLibp2p } = require("helia");
-const { formatUnits, formatEther } = require("ethers");
-const { UnixFS } = require("@helia/unixfs");
-const { multiaddr, isMultiaddr } = require("@multiformats/multiaddr");
-const { CID } = require("multiformats/cid");
-const { Libp2p } = require("libp2p");
-const { peerIdFromString } = require("@libp2p/peer-id");
-const { PeerId } = require("@libp2p/interface");
-const initEthers = require("./modules/ethersModule.js");
-const initHelia = require("./modules/heliaModule.js");
-const { JsonRpcProvider, Wallet, Contract } = require("ethers");
-const readline = require("readline");
+import { formatUnits, formatEther } from "ethers";
+import { multiaddr } from "@multiformats/multiaddr";
+import { CID } from "multiformats/cid";
+import { peerIdFromString } from "@libp2p/peer-id";
+import initEthers from "./modules/ethersModule.js";
+import initHelia from "./modules/heliaModule.js";
+import { JsonRpcProvider, Wallet, Contract } from "ethers";
+import { createInterface } from "readline";
 
 /* ToDO
  [x] test conecting between nodes
@@ -39,49 +35,6 @@ const readline = require("readline");
  [ ] Move functions to modules
 */
 
-// interface EthersStruct {
-//   provider: JsonRpcProvider;
-//   wallet: Wallet;
-//   contractSFA: Contract;
-//   contractMarket: Contract;
-//   abiSFA: any[];
-//   abiMarket: any[];
-// }
-
-// interface ipfsStruct {
-//   node: HeliaLibp2p<Libp2p<{ x: Record<string, unknown> }>>;
-//   fs: UnixFS;
-// }
-
-//interface SFA {
-//    ownerAddrs: string;
-//    sfaID: string;
-//    vesting: string
-//    cid: CID;
-//    startTime: string;
-//    TTL: string;
-//}
-
-// let eth: EthersStruct;
-// let ipfs: ipfsStruct;
-// let dialedPeers: PeerId[];
-// let storageOrders: CID[] = [];
-//let SFAs: SFA[] = [];
-
-const EthersStruct = {
-  provider: JsonRpcProvider,
-  wallet: Wallet,
-  contractSFA: Contract,
-  contractMarket: Contract,
-  abiSFA: [],
-  abiMarket: [],
-};
-
-const ipfsStruct = {
-  node: HeliaLibp2p,
-  fs: UnixFS,
-};
-
 let eth;
 let ipfs;
 let dialedPeers = [];
@@ -103,7 +56,7 @@ const main = async () => {
   }
 
   // Start CLI
-  const rl = readline.createInterface({
+  const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
   });
@@ -116,27 +69,27 @@ const mainMenu = async (rl) => {
 
 const menuOptions = (rl) => {
   rl.question(
-    "Select operation: \n \
-Options: \n \
-[0]: Exit \n \
-[1]: Print menu \n \
-[2]: Get local node info \n \
-[3]: Get eth linked data\n \
-[4]: Get smart contract taken orders\n \
-[5]: List dialed peers\n \
-[6]: Dial a multiaddrs\n \
-[7]: Dial a peerId\n \
-[8]: Hang up a peerId\n \
-[9]: List active orders\n \
-[10]: Publish Data to IPFS\n \
-[11]: Read IPFS Data\n \
-[12]: Pin a CID\n \
-[13]: Unpin a CID\n \
-[14]: Account Blance\n \
-[15]: Change Wallet\n \
-[16]: Register & Dial Host\n \
-[17]: Fetch & Dial Host\n \
-Option:",
+    `
+Select operation: 
+  [0]:   Exit 
+  [1]:   Print menu 
+  [2]:   Get local node info 
+  [3]:   Get eth linked data
+  [4]:   Get smart contract taken orders
+  [5]:   List dialed peers
+  [6]:   Dial a multiaddrs
+  [7]:   Dial a peerId
+  [8]:   Hang up a peerId
+  [9]:   List active orders
+  [10]:  Publish Data to IPFS
+  [11]:  Read IPFS Data
+  [12]:  Pin a CID
+  [13]:  Unpin a CID
+  [14]:  Account Blance
+  [15]:  Change Wallet
+  [16]:  Register & Dial Host
+  [17]:  Fetch & Dial Host
+Option:`,
     async (answer) => {
       console.log(`Selected: ${answer}\n`);
       const option = Number(answer);
@@ -287,7 +240,7 @@ const DialAPeerID = async (ipfs, peer) => {
 const DialAMultiaddr = async (ipfs, addrs) => {
   const peerMultiAddr = multiaddr(addrs);
   try {
-    if (isMultiaddr(peerMultiAddr)) {
+    if (multiaddr.isMultiaddr(peerMultiAddr)) {
       await ipfs.node.libp2p.dial(peerMultiAddr);
       console.log("dialed:", peerMultiAddr);
     }

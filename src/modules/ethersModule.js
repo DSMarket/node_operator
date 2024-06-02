@@ -1,6 +1,6 @@
-const { ethers, Contract } = require("ethers");
-const SFAJson = require("../assets/SFAToken.json");
-const MarketJson = require("../assets/Market.json");
+import { ethers, Contract } from "ethers";
+import SFAJson from "../assets/SFAToken.json" assert { type: "json" };
+import MarketJson from "../assets/Market.json" assert { type: "json" };
 
 // Get .env Variables
 const envProviderURL = process.env.PROVIDER_URL;
